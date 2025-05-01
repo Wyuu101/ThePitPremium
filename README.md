@@ -6,7 +6,7 @@
 
 ## 一、开源计划与历史问题说明
 >全量代码开源
->即日起，《天坑乱斗》插件的完整源代码将通过GitHub平台开源（仓库地址：https://github.com/ThePitCommunity/ThePitPremium），开放下载。
+>即日起，《天坑乱斗》插件的完整源代码将通过GitHub平台开源，开放下载。（仓库地址：https://github.com/ThePitCommunity/ThePitPremium）
 >此举旨在确保用户权益不受影响，开发者可自由进行二次开发本地化部署。
 >贡献者特别鸣谢
 >开发组郑重感谢以下成员的技术贡献：
