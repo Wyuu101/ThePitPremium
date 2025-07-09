@@ -72,7 +72,9 @@ object NewConfiguration {
         noobDamageBoost = config.getDouble("noob-protect.damage_boost")
         noobDamageReduce = config.getDouble("noob-protect.damage_reduce")
 
-        CombatListener.eventBoost = config.getDouble("booster")
+        //纯傻逼
+//        CombatListener.eventBoost = config.getDouble("booster")
+        ThePit.getInstance().logger.warning("b1"+config.getDouble("booster"))
 
         luckGem = config.getDouble("luck-gem", 0.30)
         waterMark = config.getString("water-mark")
