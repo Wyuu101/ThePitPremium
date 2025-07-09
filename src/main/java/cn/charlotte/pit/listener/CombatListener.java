@@ -60,10 +60,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.slf4j.LoggerFactory;
 
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -73,12 +75,15 @@ import java.util.stream.Collectors;
 @AutoRegister
 public class CombatListener implements Listener {
     private static final BountySolventBuff bountySolventBuff = new BountySolventBuff();
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(CombatListener.class);
     public static CombatListener INSTANCE;
     private final Random random = new Random();
     private final DecimalFormat numFormat = new DecimalFormat("0.00");
     private final DecimalFormat intFormat = new DecimalFormat("0");
-    public static double eventBoost = 2.0; //1.0 to close
+    public static final double eventBoost = ThePit.getInstance().getPitConfig().getBooster(); //1.0 to close
     String boostString = " &6(限时加成x" + eventBoost + "倍奖励)";
+    Logger logger =  ThePit.getInstance().getLogger();
+
 
     public CombatListener() {
         this.initMoveHandler();
@@ -86,11 +91,13 @@ public class CombatListener implements Listener {
     }
 
     private void initMoveHandler() {
-        eventBoost = ThePit.getInstance().getPitConfig().getBooster();
+//        eventBoost=ThePit.getInstance().getPitConfig().getBooster();
+//        // logger.warning("获取到加成倍率"+eventBoost);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     public void onStrike(PitStreakKillChangeEvent event) {
+
         final PlayerProfile profile = event.getPlayerProfile();
 
         if (profile.getChosePerk().get(5) == null) {
@@ -398,13 +405,18 @@ public class CombatListener implements Listener {
                 }
             }
 
+            // logger.warning("玩家威望"+killerProfile.getPrestige());
+
             double totalXp = 10.0d + killerProfile.getPrestige() * 0.5;
             double totalCoins = 10.0d + killerProfile.getPrestige() * 0.5;
+            // logger.warning("初始经验"+totalXp);
+            // logger.warning("初始硬币"+totalCoins);
+
 
             //process perk - start
             AtomicDouble coinsAtomic = new AtomicDouble(totalCoins);
             AtomicDouble expAtomic = new AtomicDouble(totalXp);
-
+            // logger.warning("初始-expAtomic获取浮点值"+expAtomic.get());
             this.handleGameEffect(killerProfile, killer, player, coinsAtomic, expAtomic);
 
             if (!isNight) {
@@ -414,31 +426,43 @@ public class CombatListener implements Listener {
             }
 
             totalCoins = coinsAtomic.get();
+            // logger.warning("expAtomic获取浮点值（硬币)"+totalCoins);
             totalXp = expAtomic.get();
-
+            // logger.warning("expAtomic获取浮点值"+totalXp);
             final KillRecap killRecap = this.initializationKillRecap(playerProfile, killerProfile, killer, totalCoins, totalXp);
 
             //calculation kill reward - start
             AtomicDouble tempCoins = new AtomicDouble(totalCoins);
+            // logger.warning("初始2-expAtomic获取浮点值（硬币)"+tempCoins.get());
             AtomicDouble tempExp = new AtomicDouble(totalXp);
+            // logger.warning("初始2-expAtomic获取浮点值（经验)"+tempExp.get());
             this.calculationKillReward(killerProfile, playerProfile, killRecap, killer, tempCoins, tempExp);
             //calculation kill reward - end
+            // logger.warning("结尾2-expAtomic获取浮点值（硬币)"+tempCoins.get());
+            // logger.warning("结尾2-expAtomic获取浮点值（经验)"+tempExp.get());
 
             handleKillBounty(killerProfile, playerProfile, tempCoins);
+            // logger.warning("结尾3-expAtomic获取浮点值（硬币)"+tempCoins.get());
+
 
             totalCoins = tempCoins.get();
             totalXp = tempExp.get();
+            // logger.warning("浮点数总经验值"+totalXp);
 
             if (isNight) {
                 totalCoins = totalCoins * 0.01;
                 totalXp = totalXp * 0.01;
             }
 
+            // logger.warning("玩家等级"+killerProfile.getLevel());
+
             if (killerProfile.getLevel() < 120) {
                 killerProfile.setExperience(killerProfile.getExperience() + totalXp);
             } else {
                 totalXp = 0;
             }
+
+            // logger.warning("结算经验"+totalXp);
 
             killerProfile.setCoins(killerProfile.getCoins() + totalCoins);
             killerProfile.grindCoins(totalCoins);
@@ -868,7 +892,9 @@ public class CombatListener implements Listener {
 
 
                 totalCoins = eventBoost * totalCoins;
+                // logger.warning("b2"+ eventBoost);
                 totalXp = eventBoost * totalXp;
+                // logger.warning("b3"+ eventBoost);
                 assistPlayer.playSound(assistPlayer.getLocation(), Sound.ORB_PICKUP, 1, 1.7F);
                 CC.send(MessageType.COMBAT, assistPlayer, CC.translate("&a&l助攻! &7" + numFormat.format(percentage * 100) + "% 的伤害在 " + playerProfile.getFormattedName() + " &6+" + numFormat.format(totalCoins) + "硬币 " + (assistProfile.getLevel() < 120 ? "&b+" + numFormat.format(totalXp) + "经验值" : "") + (eventBoost > 1 ? boostString : "")));
             }
@@ -1190,6 +1216,7 @@ public class CombatListener implements Listener {
             if (perkPlayerLevel != -1) {
                 ins.handlePlayerKilled(perkPlayerLevel, killer, player, coinsAtomic, expAtomic);
             }
+//            // logger.warning("状态1："+expAtomic.get());
         }
 
         for (IPlayerKilledEntity ins : ThePit.getInstance().getEnchantmentFactor().getPlayerKilledEntities()) {
@@ -1198,9 +1225,11 @@ public class CombatListener implements Listener {
 
             int level = enchant.getItemEnchantLevel(killer.getItemInHand());
             GameEffectListener.processKilled(ins, level, killer, player, coinsAtomic, expAtomic);
+//            // logger.warning("状态2："+expAtomic.get());
             if (killer.getInventory().getLeggings() != null && killer.getInventory().getLeggings().getType() != Material.AIR) {
                 level = enchant.getItemEnchantLevel(killer.getInventory().getLeggings());
                 GameEffectListener.processKilled(ins, level, killer, player, coinsAtomic, expAtomic);
+//                // logger.warning("状态3："+expAtomic.get());
             }
         }
 
@@ -1212,6 +1241,7 @@ public class CombatListener implements Listener {
                 if (perkPlayerLevel != -1) {
                     GameEffectListener.processBeKilledByEntity(ins, perkPlayerLevel, beKilledPlayer, killer, coinsAtomic, expAtomic);
                 }
+//                // logger.warning("状态4："+expAtomic.get());
             }
             for (IPlayerBeKilledByEntity ins : ThePit.getInstance().getEnchantmentFactor().getPlayerBeKilledByEntities()) {
                 AbstractEnchantment enchant = (AbstractEnchantment) ins;
@@ -1219,6 +1249,7 @@ public class CombatListener implements Listener {
                 int level = enchant.getItemEnchantLevel(beKilledPlayer.getItemInHand());
                 if (beKilledPlayer.getItemInHand() != null && beKilledPlayer.getItemInHand().getType() != Material.AIR && beKilledPlayer.getItemInHand().getType() != Material.LEATHER_LEGGINGS) {
                     GameEffectListener.processBeKilledByEntity(ins, level, beKilledPlayer, killer, coinsAtomic, expAtomic);
+//                    // logger.warning("状态5："+expAtomic.get());
                 }
                 if (beKilledPlayer.getInventory().getLeggings() != null && beKilledPlayer.getInventory().getLeggings().getType() != Material.AIR) {
                     level = enchant.getItemEnchantLevel(beKilledPlayer.getInventory().getLeggings());
@@ -1231,21 +1262,23 @@ public class CombatListener implements Listener {
         if (killerProfile.getGenesisData().getTeam() == GenesisTeam.ANGEL && killerProfile.getGenesisData().getBoostTier() > 0) {
             expAtomic.getAndAdd(0.01 * killerProfile.getGenesisData().getBoostTier() * expAtomic.get());
         }
+//        // logger.warning("状态7："+expAtomic.get());
         if (killerProfile.getGenesisData().getTeam() == GenesisTeam.DEMON && killerProfile.getGenesisData().getBoostTier() > 0) {
             coinsAtomic.getAndAdd(0.01 * killerProfile.getGenesisData().getBoostTier() * expAtomic.get());
         }
+//        // logger.warning("状态8："+expAtomic.get());
         //Genesis Boost End
     }
 
     private void calculationKillReward(PlayerProfile killerProfile, PlayerProfile playerProfile, KillRecap killRecap, Player killer, AtomicDouble totalCoinsAtomic, AtomicDouble totalXpAtomic) {
         double totalXp = totalXpAtomic.get();
         double totalCoins = totalCoinsAtomic.get();
-
+        // logger.warning("状态1："+totalXp);
         PerkData data = killerProfile.getUnlockedPerkMap().get("XPPrestigeBoost");
         if (data != null) {
             totalXp += data.getLevel();
         }
-
+        // logger.warning("状态2："+totalXp);
         if (killerProfile.getStreakKills() <= 3) {
             totalXp += 4;
             totalCoins += 4;
@@ -1261,14 +1294,14 @@ public class CombatListener implements Listener {
 
             streakAddon += (playerProfile.getStreakKills() / 10d) * 5;
         }
-
+        // logger.warning("状态3："+totalXp);
         if (killerProfile.getStreakKills() != 0 && killerProfile.getStreakKills() % 10 == 0) {
             totalXp += Math.min(20, (killerProfile.getStreakKills() / 10d) * 5);
             totalCoins += Math.min(20, (killerProfile.getStreakKills() / 10d) * 5);
 
             streakAddon += Math.min(20, (killerProfile.getStreakKills() / 10d) * 5);
         }
-
+        // logger.warning("状态4："+totalXp);
         killRecap.setStreakCoin(streakAddon);
         killRecap.setStreakExp(streakAddon);
 
@@ -1279,14 +1312,14 @@ public class CombatListener implements Listener {
 
             levelAddon += (playerProfile.getPrestige() - killerProfile.getPrestige()) * 7;
         }
-
+        // logger.warning("状态5："+totalXp);
         if (playerProfile.getLevel() - killerProfile.getLevel() >= 30) {
             totalXp += (playerProfile.getLevel() - killerProfile.getLevel()) / 30d * 3;
             totalCoins += (playerProfile.getLevel() - killerProfile.getLevel()) / 30d * 3;
 
             levelAddon += (playerProfile.getLevel() - killerProfile.getLevel()) / 30d * 3;
         }
-
+        // logger.warning("状态6："+totalXp);
         if (playerProfile.getLevel() <= 10) {
             totalXp -= levelAddon;
             totalCoins -= levelAddon;
@@ -1300,7 +1333,7 @@ public class CombatListener implements Listener {
             totalCoins -= 0.5 * levelAddon;
             levelAddon = 0.5 * levelAddon;
         }
-
+        // logger.warning("状态7："+totalXp);
         if (hasPremiumItem(killer)) {
             if (!hasPremiumItem(killer)) {
                 totalCoins += 10;
@@ -1309,13 +1342,15 @@ public class CombatListener implements Listener {
                 levelAddon += 10;
             }
         }
-
+        // logger.warning("状态8："+totalXp);
         killRecap.setLevelDisparityExp(levelAddon);
         killRecap.setLevelDisparityCoin(levelAddon);
 
+        // logger.warning("b4"+ eventBoost);
         totalCoins = eventBoost * totalCoins;
         totalXp = eventBoost * totalXp;
-
+        // logger.warning("倍率："+eventBoost);
+        // logger.warning("状态9："+totalXp);
         totalXpAtomic.set(totalXp);
         totalCoinsAtomic.set(totalCoins);
         //calculation kill reward - end
